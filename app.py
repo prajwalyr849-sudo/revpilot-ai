@@ -14,12 +14,12 @@ from datetime import datetime, timedelta
 
 # --------------------------- BRAND PROFILE ---------------------------
 # Add your real profile URLs here when you want the social buttons active.
-GITHUB_URL = "https://github.com/prajwalyr849-sudo"
-LINKEDIN_URL = "https://www.linkedin.com/in/prajwal-y-r-23b087247?utm_source=share_via&utm_content=profile&utm_medium=member_android"
+GITHUB_URL = "https://github.com/prajwaly849-sudo"
+LINKEDIN_URL = "https://www.linkedin.com/in/prajwal-y-r-23b087247"
 PORTFOLIO_URL = ""
+
 DEVELOPER_NAME = "Prajwal Y R"
 PROJECT_CONTEXT = "Razorpay Internship Portfolio Demo"
-
 # ============================================================
 # RevPilot — Ultimate AI Revenue Growth & Campaign Intelligence
 # ============================================================
