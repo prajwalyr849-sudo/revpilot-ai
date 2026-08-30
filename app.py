@@ -14,8 +14,8 @@ from datetime import datetime, timedelta
 
 # --------------------------- BRAND PROFILE ---------------------------
 # Add your real profile URLs here when you want the social buttons active.
-GITHUB_URL = ""
-LINKEDIN_URL = ""
+GITHUB_URL = "https://github.com/prajwalyr849-sudo"
+LINKEDIN_URL = "https://www.linkedin.com/in/prajwal-y-r-23b087247?utm_source=share_via&utm_content=profile&utm_medium=member_android"
 PORTFOLIO_URL = ""
 DEVELOPER_NAME = "Prajwal Y R"
 PROJECT_CONTEXT = "Razorpay Internship Portfolio Demo"
