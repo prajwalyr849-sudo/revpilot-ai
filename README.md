@@ -1,5 +1,7 @@
-::: {align="center"}
-`<img src="revpilot_logo.png" width="700">`{=html}
+<div align="center">
+  <img src="revpilot_logo.png" width="700">
+</div>
+
 
 # RevPilot AI --- Revenue Intelligence
 
