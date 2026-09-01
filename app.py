@@ -1,6 +1,7 @@
 import io
 import hashlib
 import math
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -575,35 +576,48 @@ if "upload_error" not in st.session_state:
 # ============================================================
 
 with st.sidebar:
+    # Resolve assets relative to app.py so the logo works on Render,
+    # regardless of the process working directory.
+    APP_DIR = Path(__file__).resolve().parent
+    logo_path = APP_DIR / "revpilot_logo.png"
+    icon_path = APP_DIR / "revpilot_icon.png"
+
+    # Use Streamlit's native image renderer for local repository assets.
+    # This is more reliable than putting a local file path inside HTML.
+    if logo_path.is_file():
+        st.image(str(logo_path), width=210)
+    elif icon_path.is_file():
+        st.image(str(icon_path), width=90)
+    else:
+        st.markdown('<div style="font-size:3rem;">🚀</div>', unsafe_allow_html=True)
+
     st.markdown(
         """
         <div class="sidebar-card">
-            <div style="font-size:2rem;">🚀</div>
             <div class="sidebar-title">RevPilot AI</div>
             <div class="sidebar-subtitle">Revenue Intelligence OS</div>
             <div class="live">● Live Data Mode</div>
-            <div class="credit">
-                <b>Creator & Developer:</b> Prajwal Y R<br>
-                <b>Context:</b> Razorpay Internship Portfolio Demo
-            </div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-    st.markdown("### 🔗 Developer")
-    st.markdown(
-        "🔗 [LinkedIn](https://www.linkedin.com/)"
-    )
-    st.markdown(
-        "💻 [GitHub](https://github.com/)"
-    )
-    st.markdown(
-        "🌐 [Portfolio / Website](https://prajwalyr.dev)"
+    st.markdown("### 🧭 WORKSPACE")
+    page = st.radio(
+        "WORKSPACE",
+        [
+            "🏠 Executive Dashboard",
+            "👥 Customer Intelligence",
+            "🎯 AI Target Customers",
+            "🔮 Campaign Prediction",
+            "📊 Revenue Analytics",
+            "💬 AI Outreach & Engagement",
+            "⚙️ Data & Settings",
+        ],
+        label_visibility="collapsed",
     )
 
     st.divider()
-
     st.markdown("### 📁 Upload Dataset")
 
     uploaded = st.file_uploader(
@@ -626,10 +640,7 @@ with st.sidebar:
         if signature != previous_signature:
             try:
                 with st.spinner(f"⚡ Processing {uploaded.name}..."):
-                    raw_data = read_uploaded_file(
-                        file_bytes,
-                        uploaded.name,
-                    )
+                    raw_data = read_uploaded_file(file_bytes, uploaded.name)
                     clean_data = normalize(raw_data)
 
                 st.session_state.dataset = clean_data
@@ -637,10 +648,7 @@ with st.sidebar:
                 st.session_state.file_size = len(file_bytes)
                 st.session_state.file_hash = file_hash
                 st.session_state.upload_error = None
-
-                st.success(
-                    f"Loaded {len(clean_data):,} rows."
-                )
+                st.success(f"Loaded {len(clean_data):,} rows.")
 
             except Exception as exc:
                 st.session_state.dataset = None
@@ -666,19 +674,11 @@ with st.sidebar:
         st.rerun()
 
     st.divider()
-
-    page = st.radio(
-        "WORKSPACE",
-        [
-            "🏠 Executive Dashboard",
-            "👥 Customer Intelligence",
-            "🎯 AI Target Customers",
-            "🔮 Campaign Prediction",
-            "📊 Revenue Analytics",
-            "ℹ️ About & Creator",
-            "⚙️ Data & Settings",
-        ],
-    )
+    st.markdown("### 🔗 Developer")
+    st.markdown("🔗 [LinkedIn](https://www.linkedin.com/)")
+    st.markdown("💻 [GitHub](https://github.com/prajwalyr849-sudo/revpilot-ai)")
+    st.markdown("🌐 [Portfolio / Website](https://prajwalyr.dev)")
+    st.caption("Prajwal Y R · Razorpay Internship Portfolio Demo")
 
 
 # ============================================================
