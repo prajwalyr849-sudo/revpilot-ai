@@ -592,15 +592,9 @@ with st.sidebar:
     )
 
     st.markdown("### 🔗 Developer")
-    st.markdown(
-        "🔗 [LinkedIn](https://www.linkedin.com/)"
-    )
-    st.markdown(
-        "💻 [GitHub](https://github.com/)"
-    )
-    st.markdown(
-        "🌐 [Portfolio / Website](https://prajwalyr.dev)"
-    )
+    st.markdown("🔗 [LinkedIn](https://www.linkedin.com/in/prajwal-y-r-23b087247)")
+    st.markdown("💻 [GitHub](https://github.com/prajwaly849-sudo)")
+    st.markdown("🌐 [Portfolio / Website](https://prajwalyr.dev)")
 
     st.divider()
 
