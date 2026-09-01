@@ -31,26 +31,36 @@ def inject_css():
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-    :root{--bg:#05070d;--panel:#0a1020;--line:rgba(139,92,246,.24);--purple:#8b5cf6;--cyan:#22d3ee;--green:#34d399;--text:#f8fafc;--muted:#8fa0b8}
+    :root{--bg:#060912;--surface:#0b1120;--surface2:#11182a;--border:rgba(139,92,246,.34);--purple:#8b5cf6;--purple2:#a78bfa;--text:#f8fafc;--muted:#94a3b8;--green:#6ee7b7;}
     html,body,[class*="css"]{font-family:Inter,sans-serif}
-    .stApp{background:radial-gradient(900px 500px at 72% -10%,rgba(124,58,237,.20),transparent 60%),radial-gradient(700px 500px at 5% 25%,rgba(34,211,238,.07),transparent 60%),linear-gradient(180deg,#05070d,#070b15 65%,#05070d);color:var(--text)}
-    [data-testid="stHeader"]{background:rgba(5,7,13,.72)}
-    [data-testid="stSidebar"]{background:linear-gradient(180deg,#060912,#080d18);border-right:1px solid rgba(139,92,246,.18)}
-    [data-testid="stSidebar"]>div:first-child{padding:18px 14px 22px}
-    .topbar{display:flex;align-items:center;justify-content:space-between;margin:2px 0 22px;padding:10px 2px}.topbar-title{font-size:15px;font-weight:800;letter-spacing:.5px}.topbar-sub{font-size:12px;color:var(--muted);margin-top:3px}
-    .live-pill{display:inline-flex;align-items:center;gap:7px;border:1px solid rgba(52,211,153,.28);background:rgba(52,211,153,.08);color:#6ee7b7;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:700}.live-dot{width:7px;height:7px;border-radius:50%;background:#34d399;box-shadow:0 0 12px #34d399}
-    .brand{padding:15px;border:1px solid rgba(139,92,246,.25);border-radius:22px;background:linear-gradient(145deg,rgba(20,17,48,.94),rgba(8,15,28,.94));margin-bottom:18px}.brand-title{font-size:23px;font-weight:800;margin-top:8px}.brand-sub{color:#9faecc;font-size:13px;margin-top:4px}.brand-meta{color:#6ee7b7;font-size:12px;font-weight:700;margin-top:12px}
-    .section-label{font-size:10px;letter-spacing:2px;color:#71809a;font-weight:800;margin:20px 0 8px;text-transform:uppercase}
-    .hero{position:relative;overflow:hidden;padding:34px 38px;border-radius:28px;border:1px solid rgba(139,92,246,.30);background:linear-gradient(135deg,rgba(34,20,72,.88),rgba(7,15,29,.96));box-shadow:0 25px 70px rgba(0,0,0,.24);margin-bottom:22px}.hero:after{content:"";position:absolute;width:280px;height:280px;border-radius:50%;right:-120px;top:-130px;background:rgba(139,92,246,.14);filter:blur(25px)}
-    .eyebrow{position:relative;z-index:1;letter-spacing:3px;color:#a78bfa;font-weight:800;font-size:11px}.hero h1{position:relative;z-index:1;font-size:42px;line-height:1.08;margin:12px 0}.hero p{position:relative;z-index:1;color:#aebbd0;font-size:16px;line-height:1.75;max-width:820px}.hero-actions{position:relative;z-index:1;display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}.hero-chip{padding:8px 12px;border-radius:999px;border:1px solid rgba(139,92,246,.25);background:rgba(139,92,246,.09);color:#ddd6fe;font-size:12px;font-weight:700}
-    .metric{height:100%;min-height:118px;padding:20px 20px 17px;border-radius:20px;border:1px solid rgba(139,92,246,.20);background:linear-gradient(145deg,#0d1527,#09101d);box-shadow:inset 0 1px 0 rgba(255,255,255,.02)}.metric-label{font-size:10px;letter-spacing:1.7px;color:#8292ab;font-weight:800;text-transform:uppercase}.metric-value{font-size:28px;font-weight:800;margin-top:10px;letter-spacing:-.5px}.metric-note{font-size:11px;color:#5ee7b7;margin-top:5px}
-    .section-title{font-size:25px;font-weight:800;margin:8px 0 16px}.panel{padding:18px;border-radius:22px;border:1px solid rgba(139,92,246,.18);background:rgba(9,15,28,.72);box-shadow:0 16px 50px rgba(0,0,0,.13)}
-    .profile{padding:18px;border-radius:20px;border:1px solid rgba(34,211,238,.18);background:linear-gradient(145deg,rgba(10,28,43,.72),rgba(10,15,29,.84))}.profile-name{font-size:22px;font-weight:800}.profile-meta{color:#9eacc0;font-size:13px;margin-top:5px}.profile-value{font-size:25px;font-weight:800;color:#67e8f9;margin-top:12px}
-    .empty{padding:75px 30px;text-align:center;border:1px dashed rgba(139,92,246,.28);border-radius:26px;background:rgba(8,14,27,.62)}.empty-icon{font-size:62px}.empty h2{font-size:28px;margin:14px 0 8px}.empty p{color:var(--muted);max-width:650px;margin:0 auto;line-height:1.8}.about-card{height:100%;padding:22px;border-radius:20px;border:1px solid rgba(139,92,246,.18);background:rgba(10,16,30,.72)}.about-card p{color:#94a3b8;line-height:1.65;font-size:13px}.tag{display:inline-block;padding:7px 11px;margin:4px;border-radius:999px;background:rgba(139,92,246,.10);border:1px solid rgba(139,92,246,.20);color:#ddd6fe;font-size:12px}
-    .stButton>button,.stDownloadButton>button{border-radius:12px;font-weight:700;border:1px solid rgba(139,92,246,.25)}
-    @media(max-width:800px){.hero{padding:26px 22px}.hero h1{font-size:31px}.hero p{font-size:14px}.metric{min-height:104px}.metric-value{font-size:24px}.section-title{font-size:22px}}
+    .stApp{background:radial-gradient(circle at 15% 0%,rgba(124,58,237,.16),transparent 28%),radial-gradient(circle at 90% 5%,rgba(37,99,235,.10),transparent 25%),linear-gradient(135deg,var(--bg),#080d18);color:var(--text)}
+    [data-testid="stSidebar"]{background:linear-gradient(180deg,#070b15,#080d18);border-right:1px solid rgba(139,92,246,.18)}
+    [data-testid="stSidebar"]>div:first-child{padding-top:1rem}
+    .brand-card,.hero,.card{background:linear-gradient(135deg,rgba(24,15,55,.88),rgba(8,15,30,.92));border:1px solid var(--border);border-radius:28px;box-shadow:0 18px 55px rgba(0,0,0,.20)}
+    .brand-card{padding:20px;margin-bottom:18px}.brand-title{font-size:27px;font-weight:800}.brand-sub{color:#a5b4fc;font-size:15px;margin-top:5px}.status{display:inline-block;color:var(--green);font-weight:700;margin-top:14px}
+    .hero{padding:42px;margin-bottom:24px}.eyebrow{letter-spacing:3px;color:#a78bfa;font-weight:800;font-size:13px}.hero h1{font-size:48px;margin:12px 0 10px}.hero p{color:#aeb9cc;font-size:18px;line-height:1.8;max-width:850px}
+    .card{padding:24px;margin-bottom:18px;background:rgba(10,17,32,.72)}
+    .metric{background:linear-gradient(145deg,#10182b,#0b1120);border:1px solid rgba(139,92,246,.28);border-radius:22px;padding:20px;min-height:120px}.metric-label{color:#94a3b8;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px}.metric-value{font-size:30px;font-weight:800;margin-top:8px}.metric-note{color:#6ee7b7;font-size:12px;margin-top:5px}
+    .section-title{font-size:25px;font-weight:800;margin:24px 0 14px}.small{color:#94a3b8;font-size:14px;line-height:1.7}
+    .linkbox a{color:#60a5fa;text-decoration:none;font-weight:600}.linkbox a:hover{text-decoration:underline}
+    .about-card{height:100%;background:rgba(15,23,42,.72);border:1px solid rgba(139,92,246,.28);border-radius:22px;padding:25px}.about-card h3{margin-top:0}.about-card p{color:#94a3b8;line-height:1.7}
+    .tag{display:inline-block;padding:7px 12px;margin:4px;border-radius:12px;background:rgba(139,92,246,.12);border:1px solid rgba(139,92,246,.25);color:#ddd6fe}
+    .stButton>button{border-radius:14px;font-weight:700}.stDownloadButton>button{border-radius:14px}
     </style>
     """, unsafe_allow_html=True)
+
+
+@st.cache_data(show_spinner=False, max_entries=8)
+def parse_uploaded_file(file_bytes: bytes, filename: str) -> pd.DataFrame:
+    bio = io.BytesIO(file_bytes)
+    lower = filename.lower()
+    if lower.endswith(".csv"):
+        return pd.read_csv(bio, low_memory=False)
+    if lower.endswith(".xlsx"):
+        return pd.read_excel(bio, engine="openpyxl")
+    if lower.endswith(".xls"):
+        return pd.read_excel(bio, engine="xlrd")
+    raise ValueError("Unsupported file type. Upload CSV, XLSX or XLS.")
 
 
 def clean_number(series, default=0.0):
@@ -196,50 +206,80 @@ def sidebar():
     logo = next((p for p in LOGO_CANDIDATES if p.exists()), None)
     if logo:
         st.sidebar.image(str(logo), use_container_width=True)
-    st.sidebar.markdown('<div class="brand"><div class="brand-title">RevPilot AI</div><div class="brand-sub">Revenue Intelligence OS</div><div class="brand-meta">● LIVE DATA ENGINE</div></div>', unsafe_allow_html=True)
-    st.sidebar.markdown('<div class="section-label">Workspace</div>', unsafe_allow_html=True)
-    page = st.sidebar.radio("Navigation", ["🏠 Executive Dashboard","👥 Customer Intelligence","🎯 AI Target Customers","🔮 Campaign Prediction","📈 Revenue Analytics","💬 AI Outreach & Engagement","⚙️ Data & Settings","ℹ️ About"], label_visibility="collapsed")
-    st.sidebar.markdown('<div class="section-label">Data source</div>', unsafe_allow_html=True)
+    else:
+        st.sidebar.markdown("<div style='font-size:42px'>🚀</div>", unsafe_allow_html=True)
+
+    st.sidebar.markdown("""
+    <div class="brand-card">
+      <div class="brand-title">RevPilot AI</div>
+      <div class="brand-sub">Revenue Intelligence OS</div>
+      <div class="status">● Live Data Mode</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.sidebar.markdown("### 🧭 WORKSPACE")
+    page = st.sidebar.radio("Navigation", [
+        "🏠 Executive Dashboard",
+        "👥 Customer Intelligence",
+        "🎯 AI Target Customers",
+        "🔮 Campaign Prediction",
+        "📈 Revenue Analytics",
+        "💬 AI Outreach & Engagement",
+        "⚙️ Data & Settings",
+        "ℹ️ About",
+    ], label_visibility="collapsed")
+
+    st.sidebar.divider()
+    st.sidebar.markdown("### 📁 UPLOAD DATASET")
+    st.sidebar.caption("CSV, XLSX or XLS • 200MB per file")
     data = load_data()
-    st.sidebar.caption(f"✓ {len(data):,} records ready" if data is not None else "Upload CSV, XLSX or XLS")
-    st.sidebar.markdown('<div class="section-label">Developer</div>', unsafe_allow_html=True)
-    st.sidebar.caption("Prajwal Y R • Razorpay Internship Portfolio Demo")
+
+    st.sidebar.divider()
+    st.sidebar.markdown("### 👨‍💻 DEVELOPER")
+    st.sidebar.markdown(f'<div class="linkbox">🔗 <a href="{LINKEDIN_URL}" target="_blank">LinkedIn</a><br><br>💻 <a href="{GITHUB_URL}" target="_blank">GitHub</a><br><br>🌐 <a href="{PORTFOLIO_URL}" target="_blank">Portfolio / Website</a></div>', unsafe_allow_html=True)
+    st.sidebar.caption("Prajwal Y R | Razorpay Internship Portfolio Demo")
     return page, data
 
 
 def landing():
     st.markdown("""
-    <div class="topbar"><div><div class="topbar-title">REVPILOT AI</div><div class="topbar-sub">Revenue Intelligence Workspace</div></div><div class="live-pill"><span class="live-dot"></span>Waiting for data</div></div>
-    <div class="hero"><div class="eyebrow">AI REVENUE INTELLIGENCE</div><h1>Turn customer data into<br>revenue decisions.</h1><p>RevPilot AI combines customer segmentation, priority scoring, campaign forecasting, interactive analytics and personalized outreach in one focused workspace.</p><div class="hero-actions"><span class="hero-chip">🎯 Smart targeting</span><span class="hero-chip">📊 Revenue analytics</span><span class="hero-chip">🤖 AI outreach</span><span class="hero-chip">⚡ Fast data pipeline</span></div></div>
-    <div class="empty"><div class="empty-icon">📂</div><h2>Start with your dataset</h2><p>Upload a CSV, XLSX or XLS file from the sidebar. RevPilot will automatically recognize common customer, revenue, order and marketing columns and build your workspace.</p></div>
+    <div class="hero">
+      <div class="eyebrow">AI REVENUE INTELLIGENCE</div>
+      <h1>RevPilot AI 🚀</h1>
+      <p>Turn customer and sales data into actionable revenue intelligence using segmentation, priority scoring, campaign prediction, interactive analytics, and personalized outreach.</p>
+      <span class="status">● Waiting for Dataset</span>
+    </div>
+    <div class="card" style="text-align:center;padding:70px 30px;">
+      <div style="font-size:70px">📁</div>
+      <h1>Upload your real dataset to begin</h1>
+      <p class="small" style="font-size:17px">Upload a CSV, XLSX, or XLS file using the sidebar. RevPilot AI will normalize the columns and build the workspace automatically.</p>
+    </div>
     """, unsafe_allow_html=True)
 
 
 def dashboard(df):
-    st.markdown('<div class="topbar"><div><div class="topbar-title">EXECUTIVE OVERVIEW</div><div class="topbar-sub">Live revenue intelligence from your dataset</div></div><div class="live-pill"><span class="live-dot"></span>Dataset active</div></div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">Executive Dashboard</div>', unsafe_allow_html=True)
-    c=st.columns(4)
-    vals=[(f"{len(df):,}","Customers","Live records"),(money(df['Customer Value'].sum()),"Customer Value","Total revenue"),(money(df['Customer Value'].mean()),"Avg Customer Value","Per customer"),(f"{(df['Segment']=='HIGH VALUE').sum():,}","High-Value Customers","Priority segment")]
-    for col,(v,l,n) in zip(c,vals):
-        with col: metric(l,v,n)
-    left,right=st.columns([1.15,.85])
+    st.markdown("<div class='section-title'>🏠 Executive Dashboard</div>", unsafe_allow_html=True)
+    c = st.columns(4)
+    with c[0]: metric("Total Customers", f"{len(df):,}", "Live dataset")
+    with c[1]: metric("Customer Value", money(df["Customer Value"].sum()), "Total revenue")
+    with c[2]: metric("Avg Value", money(df["Customer Value"].mean()), "Per customer")
+    with c[3]: metric("High-Value Count", f"{(df['Segment']=='HIGH VALUE').sum():,}", "Top segment")
+
+    left, right = st.columns(2)
     with left:
-        st.markdown('<div class="panel">',unsafe_allow_html=True)
-        seg=df.groupby('Segment',as_index=False)['Customer Value'].sum().sort_values('Customer Value',ascending=False)
-        fig=px.bar(seg,x='Segment',y='Customer Value',text_auto='.2s',title='Customer Value by Segment')
-        fig.update_layout(template='plotly_dark',paper_bgcolor='rgba(0,0,0,0)',plot_bgcolor='rgba(0,0,0,0)',margin=dict(l=5,r=5,t=45,b=5),font=dict(size=12))
-        st.plotly_chart(fig,use_container_width=True)
-        st.markdown('</div>',unsafe_allow_html=True)
+        seg = df.groupby("Segment", as_index=False)["Customer Value"].sum().sort_values("Customer Value", ascending=False)
+        fig = px.bar(seg, x="Segment", y="Customer Value", title="Value by Segment", text_auto=".2s")
+        fig.update_layout(template="plotly_dark", margin=dict(l=10,r=10,t=50,b=10), autosize=True)
+        st.plotly_chart(fig, use_container_width=True)
     with right:
-        st.markdown('<div class="panel">',unsafe_allow_html=True)
-        ch=df.groupby('Channel',as_index=False)['Spend'].sum()
-        fig=px.pie(ch,names='Channel',values='Spend',hole=.62,title='Marketing Spend by Channel')
-        fig.update_layout(template='plotly_dark',paper_bgcolor='rgba(0,0,0,0)',margin=dict(l=5,r=5,t=45,b=5),showlegend=True)
-        st.plotly_chart(fig,use_container_width=True)
-        st.markdown('</div>',unsafe_allow_html=True)
-    st.markdown('<div class="section-title">🏆 Top Revenue Customers</div>',unsafe_allow_html=True)
-    cols=['Customer ID','Name','Segment','Revenue','Purchases','Spend','Channel']
-    st.dataframe(df.nlargest(10,'Revenue')[cols],use_container_width=True,hide_index=True,height=360)
+        ch = df.groupby("Channel", as_index=False)["Spend"].sum()
+        fig = px.pie(ch, names="Channel", values="Spend", title="Spend by Channel", hole=.45)
+        fig.update_layout(template="plotly_dark", margin=dict(l=10,r=10,t=50,b=10), autosize=True)
+        st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown("### 🏆 Top 10 Revenue Customers")
+    cols = ["Customer ID","Name","Segment","Revenue","Purchases","Spend","Channel"]
+    st.dataframe(df.nlargest(10, "Revenue")[cols], use_container_width=True, hide_index=True)
 
 
 def customer_intelligence(df):
