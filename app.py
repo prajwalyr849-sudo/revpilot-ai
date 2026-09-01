@@ -696,9 +696,9 @@ if st.session_state.dataset is None and page not in {
             <div style="font-size:3rem;">📁</div>
             <h2>Upload your real dataset to begin</h2>
             <p>
-                RevPilot does not preload fake demo customers.
+               """ RevPilot does not preload fake demo customers.
                 Upload a CSV, XLSX, or XLS file using the sidebar.
-                The dashboard will appear automatically after processing.
+                The dashboard will appear automatically after processing."""
             </p>
         </div>
         """,
