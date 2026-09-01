@@ -691,19 +691,20 @@ if st.session_state.dataset is None and page not in {
     )
 
     st.markdown(
-        """
-        <div class="landing">
-            <div style="font-size:3rem;">📁</div>
-            <h2>Upload your real dataset to begin</h2>
-            <p>
-               """ RevPilot does not preload fake demo customers.
-                Upload a CSV, XLSX, or XLS file using the sidebar.
-                The dashboard will appear automatically after processing."""
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    """
+    <div class="landing">
+        <div style="font-size:3rem;">📂</div>
+        <h2>Upload your real dataset to begin</h2>
+        <p>
+            RevPilot does not preload fake data.
+            Upload a CSV, XLSX, or XLS file using the sidebar.
+            The dashboard will appear automatically after processing.
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True,
     )
+    
 
     st.stop()
 
