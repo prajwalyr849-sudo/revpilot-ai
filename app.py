@@ -719,9 +719,8 @@ customers = st.session_state.dataset
 if page == "🏠 Executive Dashboard":
 
     hero(
-        "RevPilot AI 🚀",
-        "A revenue intelligence workspace for discovering customer value,
-        prioritizing opportunities, and forecasting campaign outcomes.",
+    "RevPilot AI 🚀",
+    "A revenue intelligence workspace for discovering customer value, prioritizing opportunities, and forecasting revenue.",
     )
 
     a, b, c, d = st.columns(4)
