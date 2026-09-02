@@ -119,6 +119,41 @@ def inject_css():
         [data-testid="stSidebar"] {
             background: #081126;
             border-right: 1px solid var(--border);
+            min-width: 360px !important;
+            width: 360px !important;
+        }
+
+        [data-testid="stSidebar"] > div:first-child {
+            width: 360px !important;
+        }
+
+        [data-testid="stSidebar"] [data-testid="stRadio"] label {
+            font-size: 16px !important;
+            line-height: 1.35 !important;
+            padding: 9px 6px !important;
+            min-height: 42px !important;
+            align-items: center !important;
+        }
+
+        [data-testid="stSidebar"] [data-testid="stRadio"] > div {
+            gap: 4px !important;
+        }
+
+        @media (max-width: 800px) {
+            [data-testid="stSidebar"] {
+                min-width: 380px !important;
+                width: 380px !important;
+            }
+
+            [data-testid="stSidebar"] > div:first-child {
+                width: 380px !important;
+            }
+
+            [data-testid="stSidebar"] [data-testid="stRadio"] label {
+                font-size: 17px !important;
+                min-height: 46px !important;
+                padding: 10px 8px !important;
+            }
         }
 
         [data-testid="stSidebar"] > div:first-child {
@@ -787,6 +822,7 @@ def load_data():
                 st.session_state.data = normalized
                 st.session_state.file_signature = signature
                 st.session_state.filename = upload.name
+                st.session_state.dataframe_footprint_mb = dataframe_mb(normalized)
                 latency = (time.perf_counter() - started) * 1000
                 audit(
                     "dataset.normalize",
@@ -991,36 +1027,39 @@ def meddpicc_panel(notes_key="meddpicc_notes"):
 
 @st.cache_data(show_spinner=False)
 def enrich_risk_signals(df):
+    """Fast risk enrichment for large customer datasets."""
     d = df.copy()
-    revenue = d["Customer Value"]
-    spend_ratio = d["Spend Ratio"]
-    purchase = d["Purchases"]
+    revenue = pd.to_numeric(d["Customer Value"], errors="coerce").fillna(0)
+    spend_ratio = pd.to_numeric(d["Spend Ratio"], errors="coerce").fillna(0)
+    purchase = pd.to_numeric(d["Purchases"], errors="coerce").fillna(0)
 
     p99 = revenue.quantile(.99) if len(d) else 0
     p75 = revenue.quantile(.75) if len(d) else 0
     p25_purchase = purchase.quantile(.25) if len(d) else 0
 
+    top1 = (revenue >= p99) & (p99 > 0)
+    high_value = (revenue >= p75) & (p75 > 0)
+    churn = (purchase <= p25_purchase) & (revenue > p75)
+    high_cost = spend_ratio > 0.20
+    growth = d["Segment"].eq("GROWTH")
+    missing = d["Email"].isna() | d["Email"].eq("") | d["Email"].eq("Unknown")
+
     signals = []
-    for _, row in d.iterrows():
+    signal_text = []
+    for i in range(len(d)):
         tags = []
-        if row["Customer Value"] >= p99 and p99 > 0:
-            tags.append(("TOP 1% GMV", "ok"))
-        if row["Customer Value"] >= p75 and p75 > 0:
-            tags.append(("HIGH VALUE", "ok"))
-        if row["Purchases"] <= p25_purchase and row["Customer Value"] > p75:
-            tags.append(("HIGH CHURN RISK", "danger"))
-        if row["Spend Ratio"] > 0.20:
-            tags.append(("HIGH ACQUISITION COST", "warn"))
-        if row["Segment"] == "GROWTH":
-            tags.append(("GROWTH SIGNAL", "info"))
-        if not row["Email"] or row["Email"] == "Unknown":
-            tags.append(("MISSING CONTACT", "warn"))
-        if not tags:
-            tags.append(("STANDARD", "info"))
+        if top1.iat[i]: tags.append(("TOP 1% GMV", "ok"))
+        if high_value.iat[i]: tags.append(("HIGH VALUE", "ok"))
+        if churn.iat[i]: tags.append(("HIGH CHURN RISK", "danger"))
+        if high_cost.iat[i]: tags.append(("HIGH ACQUISITION COST", "warn"))
+        if growth.iat[i]: tags.append(("GROWTH SIGNAL", "info"))
+        if missing.iat[i]: tags.append(("MISSING CONTACT", "warn"))
+        if not tags: tags.append(("STANDARD", "info"))
         signals.append(tags)
+        signal_text.append(" | ".join(x[0] for x in tags))
 
     d["Risk Signals"] = signals
-    d["Risk Signal Text"] = [" | ".join(x[0] for x in tags) for tags in signals]
+    d["Risk Signal Text"] = signal_text
     return d
 
 
@@ -1060,6 +1099,10 @@ def system_health(df):
     safe_df = df if isinstance(df, pd.DataFrame) else pd.DataFrame()
     rows = safe_len(safe_df)
     file_hash = str(st.session_state.get("file_signature") or "NO_DATASET")
+    footprint = st.session_state.get("dataframe_footprint_mb")
+    if footprint is None:
+        footprint = dataframe_mb(safe_df)
+        st.session_state.dataframe_footprint_mb = footprint
     mode = "DEMO" if is_demo_mode() else ("LIVE" if rows else "IDLE")
 
     st.sidebar.markdown("### SYSTEM HEALTH")
@@ -1070,7 +1113,7 @@ def system_health(df):
                 <div class="audit-row"><span class="audit-key">STATUS</span><span class="audit-value">{mode}</span></div>
                 <div class="audit-row"><span class="audit-key">RUNTIME</span><span class="audit-value">{platform.python_version()}</span></div>
                 <div class="audit-row"><span class="audit-key">PROCESS</span><span class="audit-value">{memory_mb():.1f} MB</span></div>
-                <div class="audit-row"><span class="audit-key">DATAFRAME</span><span class="audit-value">{dataframe_mb(safe_df):.2f} MB</span></div>
+                <div class="audit-row"><span class="audit-key">DATAFRAME</span><span class="audit-value">{footprint:.2f} MB</span></div>
                 <div class="audit-row"><span class="audit-key">ROWS</span><span class="audit-value">{rows:,}</span></div>
                 <div class="audit-row"><span class="audit-key">SHA256</span><span class="audit-value">{file_hash[:16] if file_hash != "NO_DATASET" else "NO_DATASET"}…</span></div>
             </div>
@@ -1916,6 +1959,7 @@ def main():
             started = time.perf_counter()
             st.session_state.data = demo_data()
             st.session_state.filename = "demo_data"
+            st.session_state.dataframe_footprint_mb = dataframe_mb(st.session_state.data)
             st.session_state.file_signature = hashlib.sha256(
                 b"revpilot-deterministic-demo-v1"
             ).hexdigest()
