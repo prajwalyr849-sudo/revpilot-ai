@@ -279,6 +279,22 @@ def inject_css():
             margin-top: 8px;
         }
 
+        .mode {
+            font-family: "JetBrains Mono", monospace;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: .04em;
+            margin-top: 8px;
+        }
+
+        .mode.live {
+            color: var(--green);
+        }
+
+        .mode.demo {
+            color: #FFD166;
+        }
+
         .audit-row {
             display: grid;
             grid-template-columns: 1fr auto;
@@ -397,6 +413,30 @@ def dataframe_mb(df):
         return float(df.memory_usage(deep=True).sum() / (1024 * 1024))
     except Exception:
         return 0.0
+
+
+def is_demo_mode():
+    """Return True when the active dataset is the deterministic sandbox dataset."""
+    filename = str(st.session_state.get("filename") or "").strip().lower()
+    signature = str(st.session_state.get("file_signature") or "")
+    return (
+        filename in {"demo_data", "demo_data.csv", "demo"}
+        or signature == hashlib.sha256(b"revpilot-deterministic-demo-v1").hexdigest()
+    )
+
+
+def data_mode_label():
+    return "DEMO DATA MODE" if is_demo_mode() else "LIVE DATA MODE"
+
+
+def active_row_count(df):
+    """Never expose None to len(); always return a safe integer."""
+    if df is None:
+        return 0
+    try:
+        return int(len(df))
+    except Exception:
+        return 0
 
 
 def audit(event, latency_ms=0.0, status=200, payload_size=0, tokens=0, detail=""):
@@ -667,11 +707,15 @@ def normalize(raw: pd.DataFrame) -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False)
 def demo_data() -> pd.DataFrame:
+    """Deterministic 160-account sandbox with non-zero revenue and spend metrics."""
     rng = np.random.default_rng(42)
     n = 160
-    revenue = np.round(rng.lognormal(8.2, 0.9, n), 2)
-    purchases = rng.integers(1, 28, n)
-    spend = np.round(revenue * rng.uniform(.02, .18, n), 2)
+
+    purchases = rng.integers(2, 31, n).astype(float)
+    aov = np.round(rng.lognormal(6.8, 0.42, n), 2)
+    revenue = np.round(purchases * aov, 2)
+    spend = np.round(revenue * rng.uniform(.025, .16, n), 2)
+
     raw = pd.DataFrame(
         {
             "Customer ID": [f"CUST-{i:04d}" for i in range(1, n + 1)],
@@ -994,21 +1038,26 @@ def signal_html(tags):
 # --------------------------- SIDEBAR ---------------------------
 
 def system_health(df):
-    if df is None:
-        df = pd.DataFrame()
+    """Compact telemetry drawer that is safe before and after dataset loading."""
+    safe_df = df if isinstance(df, pd.DataFrame) else pd.DataFrame()
+    rows = active_row_count(safe_df)
+
     st.sidebar.markdown("### SYSTEM HEALTH")
     expanded = st.sidebar.expander("Audit & Runtime", expanded=False)
 
     with expanded:
-        file_hash = st.session_state.get("file_signature") or "NO_DATASET"
+        file_hash = str(st.session_state.get("file_signature") or "NO_DATASET")
+        mode = "DEMO" if is_demo_mode() else ("LIVE" if rows else "IDLE")
+
         st.markdown(
             f"""
             <div class="audit-shell" style="padding:10px;">
+                <div class="audit-row"><span class="audit-key">STATUS</span><span class="audit-value">{mode}</span></div>
                 <div class="audit-row"><span class="audit-key">RUNTIME</span><span class="audit-value">{platform.python_version()}</span></div>
                 <div class="audit-row"><span class="audit-key">MEMORY</span><span class="audit-value">{memory_mb():.1f} MB</span></div>
-                <div class="audit-row"><span class="audit-key">DATAFRAME</span><span class="audit-value">{dataframe_mb(df):.2f} MB</span></div>
-                <div class="audit-row"><span class="audit-key">ROWS</span><span class="audit-value">{len(df):,}</span></div>
-                <div class="audit-row"><span class="audit-key">SHA256</span><span class="audit-value">{file_hash[:16]}…</span></div>
+                <div class="audit-row"><span class="audit-key">DATAFRAME</span><span class="audit-value">{dataframe_mb(safe_df):.2f} MB</span></div>
+                <div class="audit-row"><span class="audit-key">ROWS</span><span class="audit-value">{rows:,}</span></div>
+                <div class="audit-row"><span class="audit-key">SHA256</span><span class="audit-value">{file_hash[:16] if file_hash != "NO_DATASET" else "NO_DATASET"}…</span></div>
             </div>
             """,
             unsafe_allow_html=True,
@@ -1016,8 +1065,13 @@ def system_health(df):
 
         if st.session_state.audit_log:
             st.markdown("**Recent execution events**")
-            audit_df = pd.DataFrame(st.session_state.audit_log[::-1]).head(12)
-            st.dataframe(audit_df, use_container_width=True, hide_index=True, height=260)
+            audit_df = pd.DataFrame(st.session_state.audit_log[::-1]).head(8)
+            st.dataframe(
+                audit_df,
+                use_container_width=True,
+                hide_index=True,
+                height=220,
+            )
         else:
             st.caption("No execution events yet.")
 
@@ -1029,12 +1083,15 @@ def sidebar(df):
     else:
         st.sidebar.markdown("<div style='font-size:36px'>🚀</div>", unsafe_allow_html=True)
 
+    mode = data_mode_label()
+    mode_class = "demo" if is_demo_mode() else "live"
+
     st.sidebar.markdown(
-        """
+        f"""
         <div class="brand">
             <div class="brand-title">RevPilot AI</div>
             <div class="brand-sub">Revenue Intelligence OS</div>
-            <div class="live">● LIVE DATA MODE</div>
+            <div class="mode {mode_class}">● {mode}</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1120,11 +1177,22 @@ def command_palette():
 
 
 def command_palette_launcher():
-    col1, col2 = st.columns([6, 1])
-    with col2:
+    col1, col2, col3 = st.columns([5.2, 1.4, 1])
+    with col1:
+        if st.session_state.get("data") is not None:
+            mode = data_mode_label()
+            badge_class = "status-warn" if is_demo_mode() else "status-ok"
+            st.markdown(
+                f'<div style="padding-top:8px;"><span class="{badge_class}">● {mode}</span></div>',
+                unsafe_allow_html=True,
+            )
+    with col3:
         if st.button("⌘K", use_container_width=True):
             command_palette()
-    st.markdown('<div class="command-hint">Command palette: Ctrl + K / Cmd + K • Use the ⌘K control to open</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="command-hint">Command palette: Ctrl + K / Cmd + K • Use the ⌘K control to open</div>',
+        unsafe_allow_html=True,
+    )
 
 
 # --------------------------- PAGES ---------------------------
@@ -1829,6 +1897,12 @@ def main():
     page, df = sidebar(st.session_state.data)
     if page_override:
         page = page_override
+
+    # Keep the canonical session-state dataset synchronized for all pages.
+    if isinstance(df, pd.DataFrame):
+        st.session_state.data = df
+    else:
+        df = pd.DataFrame()
 
     command_palette_launcher()
 
