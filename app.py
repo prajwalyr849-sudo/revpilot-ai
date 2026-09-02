@@ -1031,6 +1031,28 @@ def signal_html(tags):
     return "".join(parts)
 
 
+
+# --------------------------- DATA MODE HELPERS ---------------------------
+
+def is_demo_mode():
+    """Return True when the active dataset is the deterministic demo dataset."""
+    filename = str(st.session_state.get("filename") or "").strip().lower()
+    signature = str(st.session_state.get("file_signature") or "")
+    demo_signature = hashlib.sha256(
+        b"revpilot-deterministic-demo-v1"
+    ).hexdigest()
+    return filename in {"demo_data", "demo_data.csv"} or signature == demo_signature
+
+
+def data_mode_label():
+    """Human-readable dataset mode used by the sidebar and telemetry."""
+    if is_demo_mode():
+        return "DEMO MODE"
+    if safe_len(st.session_state.get("data")):
+        return "LIVE DATA"
+    return "IDLE — LOAD DATA"
+
+
 # --------------------------- SIDEBAR ---------------------------
 
 def system_health(df):
@@ -1743,6 +1765,7 @@ def outreach(df):
 
 def settings(df):
     st.markdown("## ⚙️ Data & Settings")
+    total_revenue = safe_sum(df, "Revenue")
 
     c = st.columns(5)
     with c[0]: metric("Rows", f"{safe_len(df):,}", "Active customer rows")
