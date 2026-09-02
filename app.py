@@ -743,6 +743,24 @@ def chart_theme(fig):
     return fig
 
 
+def validate_schema(df):
+    """Validate uploaded data before normalization; returns (ok, warnings)."""
+    warnings = []
+    if df is None or not isinstance(df, pd.DataFrame):
+        return False, ["The uploaded dataset could not be read as a table."]
+    if df.empty:
+        return False, ["The uploaded dataset is empty."]
+    if len(df.columns) == 0:
+        return False, ["The uploaded dataset has no columns."]
+    if any(str(c).strip() == "" or str(c).lower().startswith("unnamed:") for c in df.columns):
+        warnings.append("Some columns are unnamed; they will be ignored where possible.")
+    if df.shape[1] == 1:
+        warnings.append("Only one column was detected. Check the delimiter or file format.")
+    if df.shape[0] > 1000000:
+        warnings.append("Large dataset detected; normalization may take longer.")
+    return True, warnings
+
+
 def load_data():
     upload = st.sidebar.file_uploader(
         "Upload Dataset",
@@ -758,7 +776,14 @@ def load_data():
         if signature != st.session_state.file_signature:
             try:
                 raw = parse_uploaded_file(file_bytes, upload.name)
+                valid, warnings = validate_schema(raw)
+                if not valid:
+                    raise ValueError(" ".join(warnings))
+                for warning in warnings:
+                    st.sidebar.warning(warning)
                 normalized = normalize(raw)
+                if normalized.empty:
+                    raise ValueError("No usable customer records were found after normalization.")
                 st.session_state.data = normalized
                 st.session_state.file_signature = signature
                 st.session_state.filename = upload.name
