@@ -119,40 +119,39 @@ def inject_css():
         [data-testid="stSidebar"] {
             background: #081126;
             border-right: 1px solid var(--border);
-            min-width: 360px !important;
-            width: 360px !important;
         }
 
-        [data-testid="stSidebar"] > div:first-child {
-            width: 360px !important;
-        }
-
+        /* Comfortable navigation on desktop without forcing a huge mobile drawer */
         [data-testid="stSidebar"] [data-testid="stRadio"] label {
             font-size: 16px !important;
             line-height: 1.35 !important;
-            padding: 9px 6px !important;
-            min-height: 42px !important;
+            padding: 7px 6px !important;
+            min-height: 40px !important;
             align-items: center !important;
         }
 
         [data-testid="stSidebar"] [data-testid="stRadio"] > div {
-            gap: 4px !important;
+            gap: 3px !important;
         }
 
-        @media (max-width: 800px) {
+        @media (min-width: 801px) {
             [data-testid="stSidebar"] {
-                min-width: 380px !important;
-                width: 380px !important;
+                min-width: 300px !important;
+                width: 300px !important;
             }
 
             [data-testid="stSidebar"] > div:first-child {
-                width: 380px !important;
+                width: 300px !important;
             }
+        }
 
+        @media (max-width: 800px) {
+            /* Let Streamlit's native mobile drawer control its width.
+               This prevents the dashboard from being squeezed/clipped. */
             [data-testid="stSidebar"] [data-testid="stRadio"] label {
-                font-size: 17px !important;
-                min-height: 46px !important;
-                padding: 10px 8px !important;
+                font-size: 16px !important;
+                min-height: 42px !important;
+                padding: 8px 6px !important;
             }
         }
 
