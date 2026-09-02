@@ -503,6 +503,40 @@ def _number_series(df, aliases):
     return clean_number(df[src])
 
 
+def validate_schema(df):
+    """Defensive validation before normalization; returns (ok, warnings)."""
+    warnings = []
+    if df is None:
+        return False, ["Dataset is empty or could not be parsed."]
+    if not isinstance(df, pd.DataFrame):
+        return False, ["Uploaded object is not a valid tabular dataset."]
+    if df.empty:
+        return False, ["Dataset contains no rows."]
+    if len(df.columns) == 0:
+        return False, ["Dataset contains no columns."]
+
+    normalized_columns = {normalized_key(c) for c in df.columns}
+    known = {
+        "customer_id", "customerid", "cust_id", "client_id", "user_id",
+        "name", "customer_name", "email", "phone", "mobile", "city",
+        "revenue", "gmv", "sales", "amount", "spend", "orders",
+        "purchases", "purchase_count", "channel", "segment"
+    }
+    if not normalized_columns.intersection(known):
+        warnings.append("No recognized customer or revenue columns were found; fallback metrics will be used.")
+
+    for col in df.columns:
+        if df[col].dtype == "object":
+            continue
+        if not pd.api.types.is_numeric_dtype(df[col]) and not pd.api.types.is_datetime64_any_dtype(df[col]):
+            warnings.append(f"Column '{col}' has an unusual data type and will be safely coerced where applicable.")
+
+    null_cells = int(df.isna().sum().sum())
+    if null_cells:
+        warnings.append(f"{null_cells:,} blank cells detected; safe defaults will be applied.")
+    return True, warnings
+
+
 @st.cache_data(show_spinner=False, max_entries=8)
 def normalize(raw: pd.DataFrame) -> pd.DataFrame:
     if raw is None:
@@ -704,6 +738,11 @@ def load_data():
         if signature != st.session_state.file_signature:
             try:
                 raw = parse_uploaded_file(file_bytes, upload.name)
+                schema_ok, schema_warnings = validate_schema(raw)
+                if not schema_ok:
+                    raise ValueError(" | ".join(schema_warnings))
+                for warning in schema_warnings[:3]:
+                    st.sidebar.warning(warning)
                 normalized = normalize(raw)
                 st.session_state.data = normalized
                 st.session_state.file_signature = signature
@@ -955,6 +994,8 @@ def signal_html(tags):
 # --------------------------- SIDEBAR ---------------------------
 
 def system_health(df):
+    if df is None:
+        df = pd.DataFrame()
     st.sidebar.markdown("### SYSTEM HEALTH")
     expanded = st.sidebar.expander("Audit & Runtime", expanded=False)
 
