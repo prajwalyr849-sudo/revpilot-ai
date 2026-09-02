@@ -3,6 +3,7 @@ import json
 import re
 import hashlib
 import time
+import uuid
 import platform
 from datetime import datetime
 from pathlib import Path
@@ -279,22 +280,6 @@ def inject_css():
             margin-top: 8px;
         }
 
-        .mode {
-            font-family: "JetBrains Mono", monospace;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: .04em;
-            margin-top: 8px;
-        }
-
-        .mode.live {
-            color: var(--green);
-        }
-
-        .mode.demo {
-            color: #FFD166;
-        }
-
         .audit-row {
             display: grid;
             grid-template-columns: 1fr auto;
@@ -329,6 +314,21 @@ def inject_css():
             background: rgba(13,148,251,.07);
             padding: 10px 12px;
             margin: 7px 0;
+        }
+
+        .sidebar-dataset {
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: rgba(28,37,65,.55);
+            padding: 9px 10px;
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.7;
+        }
+
+        .sidebar-dataset .mono {
+            color: var(--text);
+            font-weight: 700;
         }
 
         .command-hint {
@@ -381,6 +381,22 @@ def inject_css():
             border-radius: 4px !important;
         }
 
+        /* Mobile-first density: keep the control plane readable without horizontal overflow. */
+        [data-testid="stSidebar"] {
+            min-width: 320px;
+            max-width: 86vw;
+        }
+
+        .block-container {
+            padding-left: clamp(12px, 3vw, 28px) !important;
+            padding-right: clamp(12px, 3vw, 28px) !important;
+            padding-top: 1rem !important;
+        }
+
+        .hero {
+            overflow: hidden;
+        }
+
         @media (max-width: 800px) {
             .hero {
                 padding: 18px;
@@ -415,30 +431,6 @@ def dataframe_mb(df):
         return 0.0
 
 
-def is_demo_mode():
-    """Return True when the active dataset is the deterministic sandbox dataset."""
-    filename = str(st.session_state.get("filename") or "").strip().lower()
-    signature = str(st.session_state.get("file_signature") or "")
-    return (
-        filename in {"demo_data", "demo_data.csv", "demo"}
-        or signature == hashlib.sha256(b"revpilot-deterministic-demo-v1").hexdigest()
-    )
-
-
-def data_mode_label():
-    return "DEMO DATA MODE" if is_demo_mode() else "LIVE DATA MODE"
-
-
-def active_row_count(df):
-    """Never expose None to len(); always return a safe integer."""
-    if df is None:
-        return 0
-    try:
-        return int(len(df))
-    except Exception:
-        return 0
-
-
 def audit(event, latency_ms=0.0, status=200, payload_size=0, tokens=0, detail=""):
     row = {
         "Time": datetime.now().strftime("%H:%M:%S.%f")[:-3],
@@ -466,7 +458,7 @@ def current_request_signature():
 def validate_idempotency_key(key=None):
     supplied = key or current_request_signature()
     if supplied is None:
-        supplied = f"streamlit-{st.session_state.get('file_signature') or 'no-file'}-{datetime.now().strftime('%Y%m%d%H%M')}"
+        supplied = f"streamlit-{uuid.uuid4()}"
     supplied = str(supplied).strip()
     valid = bool(re.fullmatch(r"[A-Za-z0-9._:-]{8,128}", supplied))
     if not valid:
@@ -500,13 +492,35 @@ def parse_uploaded_file(file_bytes: bytes, filename: str) -> pd.DataFrame:
 
 
 def clean_number(series, default=0.0):
+    """Coerce messy finance/user-entered values without creating alignment bugs."""
     if series is None:
         return pd.Series(dtype="float64")
-    s = series.astype(str).str.strip()
+    s = pd.Series(series, copy=False).astype(str).str.strip()
+    s = s.replace({"": np.nan, "nan": np.nan, "None": np.nan, "NaN": np.nan})
     s = s.str.replace(",", "", regex=False)
     s = s.str.replace(r"[₹$€£%]", "", regex=True)
     s = s.str.replace(r"[^0-9.\-]", "", regex=True)
-    return pd.to_numeric(s, errors="coerce").fillna(default)
+    return pd.to_numeric(s, errors="coerce").fillna(default).astype(float)
+
+
+def safe_len(df):
+    """Never call len() on a nullable/unknown dataset object."""
+    if not isinstance(df, pd.DataFrame):
+        return 0
+    return int(len(df))
+
+
+def safe_sum(df, column):
+    if not isinstance(df, pd.DataFrame) or column not in df.columns:
+        return 0.0
+    return float(pd.to_numeric(df[column], errors="coerce").fillna(0).sum())
+
+
+def safe_mean(df, column):
+    if not isinstance(df, pd.DataFrame) or column not in df.columns or df.empty:
+        return 0.0
+    values = pd.to_numeric(df[column], errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+    return float(values.mean()) if not values.empty else 0.0
 
 
 def normalized_key(value):
@@ -541,40 +555,6 @@ def _number_series(df, aliases):
     if src is None:
         return pd.Series(0.0, index=df.index, dtype="float64")
     return clean_number(df[src])
-
-
-def validate_schema(df):
-    """Defensive validation before normalization; returns (ok, warnings)."""
-    warnings = []
-    if df is None:
-        return False, ["Dataset is empty or could not be parsed."]
-    if not isinstance(df, pd.DataFrame):
-        return False, ["Uploaded object is not a valid tabular dataset."]
-    if df.empty:
-        return False, ["Dataset contains no rows."]
-    if len(df.columns) == 0:
-        return False, ["Dataset contains no columns."]
-
-    normalized_columns = {normalized_key(c) for c in df.columns}
-    known = {
-        "customer_id", "customerid", "cust_id", "client_id", "user_id",
-        "name", "customer_name", "email", "phone", "mobile", "city",
-        "revenue", "gmv", "sales", "amount", "spend", "orders",
-        "purchases", "purchase_count", "channel", "segment"
-    }
-    if not normalized_columns.intersection(known):
-        warnings.append("No recognized customer or revenue columns were found; fallback metrics will be used.")
-
-    for col in df.columns:
-        if df[col].dtype == "object":
-            continue
-        if not pd.api.types.is_numeric_dtype(df[col]) and not pd.api.types.is_datetime64_any_dtype(df[col]):
-            warnings.append(f"Column '{col}' has an unusual data type and will be safely coerced where applicable.")
-
-    null_cells = int(df.isna().sum().sum())
-    if null_cells:
-        warnings.append(f"{null_cells:,} blank cells detected; safe defaults will be applied.")
-    return True, warnings
 
 
 @st.cache_data(show_spinner=False, max_entries=8)
@@ -707,15 +687,11 @@ def normalize(raw: pd.DataFrame) -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False)
 def demo_data() -> pd.DataFrame:
-    """Deterministic 160-account sandbox with non-zero revenue and spend metrics."""
     rng = np.random.default_rng(42)
     n = 160
-
-    purchases = rng.integers(2, 31, n).astype(float)
-    aov = np.round(rng.lognormal(6.8, 0.42, n), 2)
-    revenue = np.round(purchases * aov, 2)
-    spend = np.round(revenue * rng.uniform(.025, .16, n), 2)
-
+    revenue = np.round(rng.lognormal(8.2, 0.9, n), 2)
+    purchases = rng.integers(1, 28, n)
+    spend = np.round(revenue * rng.uniform(.02, .18, n), 2)
     raw = pd.DataFrame(
         {
             "Customer ID": [f"CUST-{i:04d}" for i in range(1, n + 1)],
@@ -782,11 +758,6 @@ def load_data():
         if signature != st.session_state.file_signature:
             try:
                 raw = parse_uploaded_file(file_bytes, upload.name)
-                schema_ok, schema_warnings = validate_schema(raw)
-                if not schema_ok:
-                    raise ValueError(" | ".join(schema_warnings))
-                for warning in schema_warnings[:3]:
-                    st.sidebar.warning(warning)
                 normalized = normalize(raw)
                 st.session_state.data = normalized
                 st.session_state.file_signature = signature
@@ -1038,23 +1009,20 @@ def signal_html(tags):
 # --------------------------- SIDEBAR ---------------------------
 
 def system_health(df):
-    """Compact telemetry drawer that is safe before and after dataset loading."""
+    """Compact telemetry drawer; safe even when no dataset exists yet."""
     safe_df = df if isinstance(df, pd.DataFrame) else pd.DataFrame()
-    rows = active_row_count(safe_df)
+    rows = safe_len(safe_df)
+    file_hash = str(st.session_state.get("file_signature") or "NO_DATASET")
+    mode = "DEMO" if is_demo_mode() else ("LIVE" if rows else "IDLE")
 
     st.sidebar.markdown("### SYSTEM HEALTH")
-    expanded = st.sidebar.expander("Audit & Runtime", expanded=False)
-
-    with expanded:
-        file_hash = str(st.session_state.get("file_signature") or "NO_DATASET")
-        mode = "DEMO" if is_demo_mode() else ("LIVE" if rows else "IDLE")
-
+    with st.sidebar.expander("Audit & Runtime", expanded=False):
         st.markdown(
             f"""
             <div class="audit-shell" style="padding:10px;">
                 <div class="audit-row"><span class="audit-key">STATUS</span><span class="audit-value">{mode}</span></div>
                 <div class="audit-row"><span class="audit-key">RUNTIME</span><span class="audit-value">{platform.python_version()}</span></div>
-                <div class="audit-row"><span class="audit-key">MEMORY</span><span class="audit-value">{memory_mb():.1f} MB</span></div>
+                <div class="audit-row"><span class="audit-key">PROCESS</span><span class="audit-value">{memory_mb():.1f} MB</span></div>
                 <div class="audit-row"><span class="audit-key">DATAFRAME</span><span class="audit-value">{dataframe_mb(safe_df):.2f} MB</span></div>
                 <div class="audit-row"><span class="audit-key">ROWS</span><span class="audit-value">{rows:,}</span></div>
                 <div class="audit-row"><span class="audit-key">SHA256</span><span class="audit-value">{file_hash[:16] if file_hash != "NO_DATASET" else "NO_DATASET"}…</span></div>
@@ -1062,16 +1030,10 @@ def system_health(df):
             """,
             unsafe_allow_html=True,
         )
-
         if st.session_state.audit_log:
             st.markdown("**Recent execution events**")
             audit_df = pd.DataFrame(st.session_state.audit_log[::-1]).head(8)
-            st.dataframe(
-                audit_df,
-                use_container_width=True,
-                hide_index=True,
-                height=220,
-            )
+            st.dataframe(audit_df, use_container_width=True, hide_index=True, height=220)
         else:
             st.caption("No execution events yet.")
 
@@ -1081,10 +1043,12 @@ def sidebar(df):
     if logo:
         st.sidebar.image(str(logo), width=150)
     else:
-        st.sidebar.markdown("<div style='font-size:36px'>🚀</div>", unsafe_allow_html=True)
+        st.sidebar.markdown("<div style='font-size:32px'>🚀</div>", unsafe_allow_html=True)
 
-    mode = data_mode_label()
-    mode_class = "demo" if is_demo_mode() else "live"
+    data = load_data()
+    active_df = data if isinstance(data, pd.DataFrame) else pd.DataFrame()
+    mode = data_mode_label() if safe_len(active_df) else "IDLE — LOAD DATA"
+    mode_class = "demo" if is_demo_mode() else ("live" if safe_len(active_df) else "demo")
 
     st.sidebar.markdown(
         f"""
@@ -1097,7 +1061,7 @@ def sidebar(df):
         unsafe_allow_html=True,
     )
 
-    system_health(df)
+    system_health(active_df)
 
     st.sidebar.markdown("### WORKSPACE")
     page = st.sidebar.radio(
@@ -1116,22 +1080,21 @@ def sidebar(df):
     )
 
     st.sidebar.markdown("### DATA")
-    data = load_data()
+    if safe_len(active_df):
+        st.sidebar.markdown(
+            f'<div class="sidebar-dataset"><span class="mono">{safe_len(active_df):,}</span> active rows<br><span class="mono">{dataframe_mb(active_df):.2f} MB</span> footprint</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.sidebar.caption("No dataset loaded. Use demo mode below or upload a file.")
 
     st.sidebar.divider()
     st.sidebar.markdown("### DEVELOPER")
     st.sidebar.markdown(
-        f"""
-        <div class="small">
-            <a href="{LINKEDIN_URL}" target="_blank">LinkedIn</a><br>
-            <a href="{GITHUB_URL}" target="_blank">GitHub</a><br>
-            <a href="{PORTFOLIO_URL}" target="_blank">Portfolio</a>
-        </div>
-        """,
+        f'<div class="small"><a href="{LINKEDIN_URL}" target="_blank">LinkedIn</a> &nbsp;·&nbsp; <a href="{GITHUB_URL}" target="_blank">GitHub</a> &nbsp;·&nbsp; <a href="{PORTFOLIO_URL}" target="_blank">Portfolio</a></div>',
         unsafe_allow_html=True,
     )
-    st.sidebar.caption(f"{DEVELOPER_NAME} | {PROJECT_CONTEXT}")
-
+    st.sidebar.caption(f"{DEVELOPER_NAME} · {PROJECT_CONTEXT}")
     return page, data
 
 
@@ -1177,22 +1140,11 @@ def command_palette():
 
 
 def command_palette_launcher():
-    col1, col2, col3 = st.columns([5.2, 1.4, 1])
-    with col1:
-        if st.session_state.get("data") is not None:
-            mode = data_mode_label()
-            badge_class = "status-warn" if is_demo_mode() else "status-ok"
-            st.markdown(
-                f'<div style="padding-top:8px;"><span class="{badge_class}">● {mode}</span></div>',
-                unsafe_allow_html=True,
-            )
-    with col3:
+    col1, col2 = st.columns([6, 1])
+    with col2:
         if st.button("⌘K", use_container_width=True):
             command_palette()
-    st.markdown(
-        '<div class="command-hint">Command palette: Ctrl + K / Cmd + K • Use the ⌘K control to open</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown('<div class="command-hint">Command palette: Ctrl + K / Cmd + K • Use the ⌘K control to open</div>', unsafe_allow_html=True)
 
 
 # --------------------------- PAGES ---------------------------
@@ -1246,14 +1198,16 @@ def dashboard(df):
         unsafe_allow_html=True,
     )
 
-    avg_customer_value = df["Customer Value"].sum() / max(len(df), 1)
-    high_value = int((df["Segment"] == "HIGH VALUE").sum())
-    total_purchases = df["Purchases"].sum()
-    aov = df["Revenue"].sum() / max(total_purchases, 1)
+    customer_count = safe_len(df)
+    total_revenue = safe_sum(df, "Revenue")
+    avg_customer_value = total_revenue / max(customer_count, 1)
+    high_value = int((df["Segment"] == "HIGH VALUE").sum()) if "Segment" in df.columns else 0
+    total_purchases = safe_sum(df, "Purchases")
+    aov = total_revenue / max(total_purchases, 1)
 
     c = st.columns(5)
-    with c[0]: metric("Customers", f"{len(df):,}", "Active rows")
-    with c[1]: metric("Revenue", money(df["Revenue"].sum()), "Customer value")
+    with c[0]: metric("Customers", f"{customer_count:,}", "Active rows")
+    with c[1]: metric("Revenue", money(total_revenue), "Customer value")
     with c[2]: metric("Avg Customer Value", money(avg_customer_value), "Revenue / customer")
     with c[3]: metric("High-Value", f"{high_value:,}", "Segment")
     with c[4]: metric("AOV", money(aov), "Revenue / purchase")
@@ -1295,8 +1249,8 @@ def customer_intelligence(df):
     c = st.columns(4)
     with c[0]: metric("Customers", f"{len(view):,}")
     with c[1]: metric("Revenue", money(view["Revenue"].sum()))
-    with c[2]: metric("Avg Value", money(view["Customer Value"].mean() if len(view) else 0))
-    with c[3]: metric("Avg AOV", money(view["Avg Order Value"].mean() if len(view) else 0))
+    with c[2]: metric("Avg Value", money(safe_mean(view, "Customer Value")))
+    with c[3]: metric("Avg AOV", money(safe_mean(view, "Avg Order Value")))
 
     search = st.text_input("Search customer", placeholder="Name, customer ID, email")
     if search.strip():
@@ -1356,13 +1310,13 @@ def target_customers(df):
         d["Segment Bonus"]
     ).clip(0, 100)
 
-    top_n = st.slider(
-        "Target accounts",
-        5,
-        min(100, max(5, len(d))),
-        min(20, len(d)),
-        5,
-    )
+    if d.empty:
+        st.info("No target accounts available for the current filter.")
+        return
+    max_targets = min(100, len(d))
+    min_targets = min(5, max_targets)
+    default_targets = min(20, max_targets)
+    top_n = st.slider("Target accounts", min_targets, max_targets, default_targets, 1)
 
     top = d.nlargest(top_n, "Priority Score").sort_values("Priority Score")
 
@@ -1413,9 +1367,9 @@ def campaign_prediction(df):
         )
     )
     blended = float(np.clip(base_response * quality, .01, .35))
-    audience = len(df)
+    audience = safe_len(df)
     expected_orders = audience * blended
-    avg_order_value = float(df["Avg Order Value"].mean()) if len(df) else 0
+    avg_order_value = safe_mean(df, "Avg Order Value")
     expected_revenue = expected_orders * avg_order_value * realization
     campaign_cost = expected_revenue * cost_rate
     contribution = expected_revenue - campaign_cost
@@ -1460,7 +1414,7 @@ def revenue_analytics(df):
     metric_name = st.selectbox("Distribution metric", numeric)
 
     chart_df = df
-    if len(df) > 100_000:
+    if safe_len(df) > 100_000:
         chart_df = df.sample(100_000, random_state=42)
 
     fig = px.histogram(
@@ -1526,13 +1480,13 @@ def make_message(row, objective, tone, channel):
     return body
 
 
-def build_crm_payload(row, objective, tone, channel, message):
+def build_crm_payload(row, objective, tone, channel, message, idempotency_key=None):
     payload = {
         "event": "customer_outreach.created",
         "source": "revpilot_ai",
         "version": "1.0",
         "timestamp": datetime.utcnow().isoformat(timespec="seconds") + "Z",
-        "idempotency_key": validate_idempotency_key(),
+        "idempotency_key": idempotency_key or validate_idempotency_key(),
         "customer": {
             "customer_id": str(row.get("Customer ID", "")),
             "name": str(row.get("Name", "")),
@@ -1766,9 +1720,9 @@ def settings(df):
     st.markdown("## ⚙️ Data & Settings")
 
     c = st.columns(5)
-    with c[0]: metric("Rows", f"{len(df):,}", "Active customer rows")
-    with c[1]: metric("Columns", f"{len(df.columns):,}", "Normalized fields")
-    with c[2]: metric("Revenue", money(df["Revenue"].sum()), "Customer value")
+    with c[0]: metric("Rows", f"{safe_len(df):,}", "Active customer rows")
+    with c[1]: metric("Columns", f"{len(df.columns) if isinstance(df, pd.DataFrame) else 0:,}", "Normalized fields")
+    with c[2]: metric("Revenue", money(total_revenue), "Customer value")
     with c[3]: metric("Memory", f"{dataframe_mb(df):.1f} MB", "DataFrame footprint")
     with c[4]: metric("Status", "READY", "Pipeline healthy")
 
@@ -1776,7 +1730,9 @@ def settings(df):
     st.code(st.session_state.get("file_signature") or "DEMO / NO UPLOAD")
 
     st.markdown("### Dynamic Preview")
-    rows = st.slider("Preview rows", 5, min(100, max(5, len(df))), min(25, max(5, len(df))))
+    preview_max = min(100, max(5, safe_len(df)))
+    preview_default = min(25, preview_max)
+    rows = st.slider("Preview rows", 5, preview_max, preview_default)
     st.dataframe(df.head(rows), use_container_width=True, hide_index=True)
 
     st.download_button(
@@ -1893,16 +1849,10 @@ def main():
     else:
         page_override = None
 
-    # Load data after the sidebar controls so the sidebar remains responsive.
+    # Sidebar owns dataset loading so telemetry always receives a safe DataFrame.
     page, df = sidebar(st.session_state.data)
     if page_override:
         page = page_override
-
-    # Keep the canonical session-state dataset synchronized for all pages.
-    if isinstance(df, pd.DataFrame):
-        st.session_state.data = df
-    else:
-        df = pd.DataFrame()
 
     command_palette_launcher()
 
